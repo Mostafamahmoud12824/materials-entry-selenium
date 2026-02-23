@@ -91,3 +91,49 @@ The Excel file must include the following columns:
 ### 1️⃣ Install Dependencies
 ```bash
 npm install selenium-webdriver xlsx
+```
+2️⃣ Configure Paths
+
+Update these paths inside the script if needed:
+
+Excel file path
+
+GeckoDriver path
+
+3️⃣ Run the Script
+node script.js
+4️⃣ Enter Domain
+
+When prompted:
+```
+Enter the domain (without https://):
+```
+---
+## 🔐 Login Flow
+
+The script:
+
+Logs into the employee system
+
+Navigates to Products Entry
+
+Logs in again (secondary modal)
+
+Opens Materials
+
+Adds ingredients one by one from Excel
+---
+## ⚠️ Notes
+
+Firefox browser is required
+
+GeckoDriver version must match Firefox version
+
+The script is optimized for dynamic UI behavior
+
+Validation warnings do not stop execution
+---
+## 📌 Author
+
+Mostafa Mahmoud Salah
+Software Engineer – Automation & Web Systems
