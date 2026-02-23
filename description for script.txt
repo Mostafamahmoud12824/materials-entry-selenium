@@ -1,0 +1,177 @@
+# Raw Materials Entry Automation — Technical Description
+
+## Overview
+
+This is a **Node.js browser automation script** that automates the manual data entry of raw materials into a restaurant management web application. It reads material data from an Excel file and uses Selenium WebDriver (Firefox) to fill and submit a web form for each material — eliminating the need for manual input.
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js |
+| Browser Automation | Selenium WebDriver (`selenium-webdriver` npm package) |
+| Browser | Mozilla Firefox via GeckoDriver |
+| Excel Parsing | SheetJS (`xlsx` npm package) |
+| Input Method | CLI (readline via stdin) |
+
+---
+
+## How It Works — Step by Step
+
+### 1. User Input
+- The script starts by asking the user to enter the **target domain** (e.g. `rgb-restaurant.rgbai.net`) via the terminal.
+
+### 2. Excel File Reading
+- Reads the file at: `E:\add a material\materials_template.xlsx`
+- Auto-detects the header row by scanning for columns named `Name_EN` or `Name_AR`
+- Parses all rows into a list of material objects
+- Filters out empty or header-duplicate rows
+
+### 3. Pre-flight Validation
+Before opening the browser, the script validates every row in the Excel file:
+- `Material_Form` must be `solid` or `liquid`
+- `Order_Unit` and `Cost_Unit` must match the form:
+  - Solid → `gram` | `kilogram` | `tonne`
+  - Liquid → `milliliter` | `liter` | `gallon`
+- Rows with errors are logged with warnings but processing continues
+
+### 4. Browser Launch
+- Launches Firefox using GeckoDriver at `E:\add a material\geckodriver.exe`
+- Maximizes the browser window
+
+### 5. Login (First)
+- Navigates to `/auth/employees/login`
+- Fills in username: `cashier` and password: `@cashier`
+- Submits the form and waits for redirect to dashboard
+
+### 6. Products Entry Access
+- Clicks the **"Products entry"** button on the dashboard
+- A **second login modal** appears — fills in the same credentials and logs in again
+- Waits for the interface to fully load
+
+### 7. Materials Tab
+- Clicks the **"materials"** tab
+- Waits for the "add a new ingredient" button to confirm the tab is ready
+
+### 8. Material Entry Loop
+For each material in the Excel file, the script:
+
+1. Clicks **"add a new ingredient"** → waits for the modal form to open
+2. Fills **Arabic name** (`Name_AR`) in the first name input
+3. Fills **English name** (`Name_EN`) in the second name input
+4. Selects **Material Form** (`solid` = value 1, `liquid` = value 2) from a `<select>` dropdown
+5. Waits for the unit dropdowns to re-render based on the selected form (no hardcoded sleep — uses explicit DOM wait)
+6. Fills **Order Limit** value (`Order_Limit`)
+7. Selects **Order Unit** from the first unit `<select>` (by mapped numeric value)
+8. Fills **Buying Cost** value (`Buying_Cost`)
+9. Selects **Cost Unit** from the second unit `<select>`
+10. Clicks the **Taxable** toggle label to turn it ON
+11. Clicks the **Prices including VAT** toggle label to turn it ON
+12. Clicks the **"create"** button to save
+13. Waits for the floating overlay modal to fully disappear before moving to the next material
+
+---
+
+## Unit Mapping System
+
+Units in the Excel file are written as plain English words and mapped internally to numeric option values expected by the web form:
+
+```
+solid:
+  gram       → "1"
+  kilogram   → "2"
+  tonne      → "3"
+
+liquid:
+  milliliter → "4"
+  liter      → "5"
+  gallon     → "6"
+```
+
+---
+
+## Key Technical Decisions
+
+### Explicit Waits (No Fixed Sleeps)
+All waiting is done using Selenium's `driver.wait()` with condition functions — not `driver.sleep()`. This means the script moves to the next step as soon as the condition is met, rather than waiting a fixed number of milliseconds regardless of actual page state.
+
+Examples:
+- After login → waits for URL to contain `/dashboard`
+- After form change → waits for the correct unit options to appear in the DOM
+- After save → waits for the overlay `div.floating-form.position-absolute` to disappear
+
+### Stale Element Prevention
+Unit `<select>` elements are re-fetched from the DOM right before each interaction to avoid `StaleElementReferenceException` — a common Selenium issue when the DOM re-renders after a state change.
+
+### Modal Close Detection
+After clicking "create", the script waits for the overlay element with class `floating-form position-absolute` to become invisible or be removed from the DOM — ensuring the next iteration doesn't attempt to click buttons that are obscured by the modal.
+
+---
+
+## Excel File Format
+
+The script expects an `.xlsx` file with the following column headers (order doesn't matter):
+
+| Column | Description | Example Values |
+|---|---|---|
+| `Name_AR` | Arabic name of the material | طماطم |
+| `Name_EN` | English name of the material | Tomato |
+| `Material_Form` | Physical form | `solid` or `liquid` |
+| `Order_Limit` | Minimum order quantity (number) | `10` |
+| `Order_Unit` | Unit for order limit | `gram`, `kilogram`, `liter`, etc. |
+| `Buying_Cost` | Cost per unit (number) | `5.5` |
+| `Cost_Unit` | Unit for buying cost | `gram`, `kilogram`, `liter`, etc. |
+
+---
+
+## File Paths (Hardcoded)
+
+| Resource | Path |
+|---|---|
+| Excel file | `E:\add a material\materials_template.xlsx` |
+| GeckoDriver | `E:\add a material\geckodriver.exe` |
+
+---
+
+## Error Handling
+
+- Each material entry is wrapped in a `try/catch` — if one material fails, the script logs the error and continues to the next
+- Critical errors (missing files, failed login) throw and terminate the entire script
+- Toggle failures are caught silently with a warning (non-blocking)
+
+---
+
+## Output / Logging
+
+The script logs detailed progress to the terminal for every step:
+```
+➕ Adding material 1/5: Tomato
+  ✓ Arabic name: طماطم
+  ✓ English name: Tomato
+  ✓ Material form: solid
+  ✓ Order limit: 10
+  ✓ Order unit: kilogram
+  ✓ Buying cost: 5.5
+  ✓ Cost unit: kilogram
+  ✓ Taxable: ON
+  ✓ Prices including VAT: ON
+  ✓ Material saved successfully
+```
+
+---
+
+## How to Run
+
+```bash
+node test.js
+# Then enter the domain when prompted (without https://)
+```
+
+**Prerequisites:**
+- Node.js installed
+- `npm install selenium-webdriver xlsx` executed in the project folder
+- Firefox browser installed
+- GeckoDriver placed at `E:\add a material\geckodriver.exe`
+- Excel file placed at `E:\add a material\materials_template.xlsx`

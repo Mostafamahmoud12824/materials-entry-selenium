@@ -1,0 +1,16 @@
+{
+  "name": "add-a-material",
+  "version": "1.0.0",
+  "main": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "selenium-webdriver": "^4.41.0",
+    "xlsx": "^0.18.5"
+  }
+}
